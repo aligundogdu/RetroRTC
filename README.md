@@ -13,6 +13,10 @@
   <img src="https://img.shields.io/badge/Backend-None!-success?style=flat-square" alt="No Backend">
 </p>
 
+<p align="center">
+  <img src="public/screenshot.png" alt="RetroRTC Screenshot" width="100%">
+</p>
+
 ---
 
 ## 🇬🇧 English

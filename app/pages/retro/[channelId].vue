@@ -146,22 +146,29 @@ const isPresentationMode = ref(false)
 const showExportModal = ref(false)
 
 // Kanal yüklendiğinde (WebRTC sync sonrası) anonimlik kontrolü
+// Kanal yüklendiğinde (WebRTC sync sonrası) anonimlik kontrolü
 watch(channel, (newChannel) => {
+  console.log('Channel watcher triggered:', newChannel ? newChannel.id : 'null')
   if (newChannel && !currentParticipant.value) {
     if (newChannel.isAnonymous) {
       // Anonim mod: Otomatik katıl (random isimle)
+      console.log('Auto-joining anonymous channel')
       createParticipant('Anonymous') // İsim kullanılmayacak, random üretilecek
     } else {
       // İsimli mod: Modal göster
+      console.log('Showing join modal for named channel')
       showJoinModal.value = true
     }
   }
 })
 
 onMounted(() => {
+  console.log('Retro page mounted, channelId:', channelId)
   // Kanal var mı kontrol et (Host veya daha önce katılmış Guest)
   const existingChannel = loadChannel()
   const existingParticipant = loadParticipant()
+  
+  console.log('Initial load check - Channel:', existingChannel ? 'Found' : 'Not Found', 'Participant:', existingParticipant ? 'Found' : 'Not Found')
   
   if (existingChannel) {
     // Kanal var, katılımcı kontrolü

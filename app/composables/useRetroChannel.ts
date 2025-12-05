@@ -299,6 +299,11 @@ export function useRetroChannel(channelId: string) {
     // LocalStorage'a kaydet
     function saveChannel(data: RetroChannel) {
         if (import.meta.client) {
+            if (!data) {
+                console.error('Attempted to save null/undefined channel data')
+                return
+            }
+            console.log('Saving channel data:', data.id, 'Notes:', data.notes.length)
             localStorage.setItem(storageKey, JSON.stringify(data))
             channel.value = data
         }
@@ -309,11 +314,17 @@ export function useRetroChannel(channelId: string) {
         if (!import.meta.client) return null
 
         const data = localStorage.getItem(storageKey)
-        if (!data) return null
+        if (!data) {
+            console.log('No channel data in localStorage')
+            return null
+        }
 
         try {
-            return JSON.parse(data)
-        } catch {
+            const parsed = JSON.parse(data)
+            console.log('Loaded channel from localStorage:', parsed.id)
+            return parsed
+        } catch (e) {
+            console.error('Failed to parse channel data from localStorage:', e)
             return null
         }
     }
@@ -353,6 +364,8 @@ export function useRetroChannel(channelId: string) {
                         payload: channel.value,
                         timestamp: Date.now()
                     })
+                } else if (webrtc.role.value === 'host' && !channel.value) {
+                    console.error('Received REQUEST_SYNC but host has no channel data!')
                 }
                 break
 
@@ -360,8 +373,12 @@ export function useRetroChannel(channelId: string) {
                 // Guest: Host'tan tam state al
                 if (webrtc.role.value === 'guest') {
                     const syncedChannel = message.payload as RetroChannel
-                    saveChannel(syncedChannel)
-                    console.log('State synced from host')
+                    if (syncedChannel) {
+                        console.log('State synced from host:', syncedChannel.id)
+                        saveChannel(syncedChannel)
+                    } else {
+                        console.error('Received empty SYNC_STATE payload from host')
+                    }
                 }
                 break
 

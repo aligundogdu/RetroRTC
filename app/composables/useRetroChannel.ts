@@ -139,6 +139,11 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
         try {
             if (activeProvider.value === 'trystero') {
                 await trystero.initializeAsHost(channelId)
+                // Trystero mesaj handler'ini room oluştuktan sonra kaydet
+                trystero.onMessage((message, peerId) => {
+                    console.log('[DEBUG] Trystero Host received message:', message.type)
+                    handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
+                })
                 console.log('[DEBUG] Trystero host initialized successfully')
             } else {
                 await webrtc.initializeAsHost(channelId)
@@ -158,6 +163,13 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
         try {
             if (activeProvider.value === 'trystero') {
                 await trystero.connectAsGuest(channelId)
+
+                // Trystero mesaj handler'ini room oluştuktan sonra kaydet
+                trystero.onMessage((message, peerId) => {
+                    console.log('[DEBUG] Trystero Guest received message:', message.type)
+                    handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
+                })
+
                 console.log('[DEBUG] joinChannel: Connected via Trystero, requesting sync...')
 
                 // Kanal verisini iste
@@ -645,12 +657,9 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
         currentParticipant.value = loadParticipant()
         setupStorageListener()
 
-        // Aktif provider'ın mesaj handler'ını kaydet
-        if (activeProvider.value === 'trystero') {
-            trystero.onMessage((message, peerId) => {
-                handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
-            })
-        } else {
+        // WebRTC için mesaj handler'ı buradan kaydet (PeerJS)
+        // Trystero için initializeHost() ve joinChannel() içinde kaydedilir
+        if (activeProvider.value === 'peerjs') {
             webrtc.onMessage(handleWebRTCMessage)
         }
     })

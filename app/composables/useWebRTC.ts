@@ -1,5 +1,6 @@
 import Peer from 'peerjs'
 import type { DataConnection } from 'peerjs'
+import type { ConnectionStatus } from './useSyncProvider'
 
 export type MessageType =
     | 'REQUEST_SYNC'
@@ -18,7 +19,6 @@ export interface WebRTCMessage {
     timestamp: number
 }
 
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 export type PeerRole = 'host' | 'guest' | null
 
 // ICE Server yapılandırması - NAT/Firewall arkasındaki cihazlar için

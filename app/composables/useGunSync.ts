@@ -1,7 +1,6 @@
 import Gun from 'gun'
 import 'gun/sea'
-
-export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
+import type { ConnectionStatus } from './useSyncProvider'
 
 // Gun.js instance - public relay'ler kullanır, API key gerekmez
 const gun = Gun({

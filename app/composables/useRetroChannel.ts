@@ -91,9 +91,11 @@ export function useRetroChannel(channelId: string) {
     async function initializeHost() {
         try {
             await webrtc.initializeAsHost(channelId)
-            console.log('WebRTC host initialized')
+            console.log('[DEBUG] WebRTC host initialized successfully')
         } catch (err) {
-            console.error('Failed to initialize WebRTC host:', err)
+            console.error('[DEBUG] Failed to initialize WebRTC host:', err)
+            // Hatayı fırlat ki çağıran kod localStorage sync moduna geçebilsin
+            throw err
         }
     }
 

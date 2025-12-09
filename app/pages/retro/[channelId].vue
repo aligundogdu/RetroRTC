@@ -181,8 +181,15 @@ onMounted(() => {
       const participant = existingChannel.participants.find(p => p.id === existingParticipant.id)
       
       if (participant && participant.isCreator) {
-        // Host ise tekrar başlat
-        initializeHost()
+        // Host ise - WebRTC mi yoksa localStorage sync mi?
+        // Aynı tarayıcıda ikinci sekme açıldığında localStorage sync kullan
+        initializeHost().catch((err) => {
+          console.log('[DEBUG] Host initialization failed, falling back to localStorage sync mode')
+          console.log('[DEBUG] Error was:', err.message)
+          // WebRTC başarısız oldu, localStorage sync modunda devam et
+          // Storage event listener zaten aktif, sadece channel'ı yükle
+          // Bu sayede aynı tarayıcıdaki diğer sekmelerle sync olur
+        })
       } else {
         // Guest ise tekrar bağlan
         joinChannel()

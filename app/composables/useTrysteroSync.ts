@@ -1,4 +1,5 @@
-import { joinRoom } from 'trystero'
+// BitTorrent tracker stratejisi kullan - rate limit yok, ücretsiz
+import { joinRoom } from 'trystero/torrent'
 import type { Room } from 'trystero'
 import type { SyncProvider, SyncMessage, ConnectionStatus, SyncRole } from './useSyncProvider'
 

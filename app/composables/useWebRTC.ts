@@ -21,6 +21,32 @@ export interface WebRTCMessage {
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 export type PeerRole = 'host' | 'guest' | null
 
+// ICE Server yapılandırması - NAT/Firewall arkasındaki cihazlar için
+// OpenRelay ücretsiz TURN sunucuları: https://www.metered.ca/tools/openrelay/
+const ICE_SERVERS = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        // OpenRelay ücretsiz TURN sunucuları
+        {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        }
+    ]
+}
+
 export function useWebRTC() {
     const peer = ref<Peer | null>(null)
     const connections = ref<DataConnection[]>([])
@@ -42,6 +68,7 @@ export function useWebRTC() {
                 // PeerJS instance oluştur
                 peer.value = new Peer(channelId, {
                     debug: 2, // Development için debug modu
+                    config: ICE_SERVERS // TURN/STUN sunucuları
                 })
 
                 peer.value.on('open', (id) => {
@@ -88,6 +115,7 @@ export function useWebRTC() {
                 // PeerJS instance oluştur (random ID)
                 peer.value = new Peer({
                     debug: 2,
+                    config: ICE_SERVERS // TURN/STUN sunucuları
                 })
 
                 // Connection timeout - 15 saniye

@@ -57,13 +57,13 @@ export function useWebRTC() {
 
     const messageHandlers = new Set<(message: WebRTCMessage, conn: DataConnection) => void>()
 
-    // Host olarak başlat
-    function initializeAsHost(channelId: string): Promise<string> {
+    // Host olarak başlat (retry mekanizmalı)
+    function initializeAsHost(channelId: string, retryCount = 0): Promise<string> {
         return new Promise((resolve, reject) => {
             try {
                 status.value = 'connecting'
                 role.value = 'host'
-                console.log('[DEBUG] Host: Initializing with channelId:', channelId)
+                console.log('[DEBUG] Host: Initializing with channelId:', channelId, 'attempt:', retryCount + 1)
 
                 // PeerJS instance oluştur
                 peer.value = new Peer(channelId, {
@@ -84,8 +84,22 @@ export function useWebRTC() {
                     setupConnection(conn)
                 })
 
-                peer.value.on('error', (err) => {
+                peer.value.on('error', (err: any) => {
                     console.error('[DEBUG] Host: Peer error:', err.type, err.message)
+
+                    // ID çakışması durumunda retry
+                    if (err.type === 'unavailable-id' && retryCount < 3) {
+                        console.log('[DEBUG] Host: ID is taken, retrying in 2 seconds... (attempt', retryCount + 2, ')')
+                        peer.value?.destroy()
+
+                        setTimeout(() => {
+                            initializeAsHost(channelId, retryCount + 1)
+                                .then(resolve)
+                                .catch(reject)
+                        }, 2000)
+                        return
+                    }
+
                     error.value = err.message
                     status.value = 'error'
                     reject(err)
@@ -94,6 +108,12 @@ export function useWebRTC() {
                 peer.value.on('disconnected', () => {
                     console.log('[DEBUG] Host: Disconnected from signaling server')
                     status.value = 'disconnected'
+
+                    // Otomatik yeniden bağlan
+                    if (peer.value && !peer.value.destroyed) {
+                        console.log('[DEBUG] Host: Attempting to reconnect...')
+                        peer.value.reconnect()
+                    }
                 })
             } catch (err: any) {
                 console.error('[DEBUG] Host: Failed to initialize:', err)

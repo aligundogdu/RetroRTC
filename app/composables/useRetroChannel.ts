@@ -436,7 +436,7 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
             case 'REQUEST_SYNC':
                 console.log('[DEBUG] REQUEST_SYNC: Processing...')
                 if (getActiveRole() === 'host' && channel.value) {
-                    console.log('[DEBUG] REQUEST_SYNC: Host has channel data, sending SYNC_STATE to:', conn.peer)
+                    console.log('[DEBUG] REQUEST_SYNC: Host has channel data, sending SYNC_STATE')
                     console.log('[DEBUG] REQUEST_SYNC: Channel data preview:', {
                         id: channel.value.id,
                         name: channel.value.name,
@@ -444,10 +444,11 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
                         notesCount: channel.value.notes.length,
                         participantsCount: channel.value.participants.length
                     })
-                    conn.send({
+
+                    // Provider-agnostic: doBroadcast kullan (hem PeerJS hem Trystero için çalışır)
+                    doBroadcast({
                         type: 'SYNC_STATE',
-                        payload: channel.value,
-                        timestamp: Date.now()
+                        payload: channel.value
                     })
                     console.log('[DEBUG] REQUEST_SYNC: SYNC_STATE sent successfully')
                 } else if (getActiveRole() === 'host' && !channel.value) {

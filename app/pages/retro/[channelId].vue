@@ -118,8 +118,42 @@
 </template>
 
 <script setup lang="ts">
+import type { ProviderType } from '~/composables/useSyncProvider'
+
 const route = useRoute()
 const channelId = route.params.channelId as string
+
+// Provider seçimini localStorage'dan oku
+function getProviderFromSetup(): ProviderType {
+  if (!import.meta.client) return 'trystero'
+  
+  // Önce setup verisine bak
+  const setupData = localStorage.getItem(`retro_setup_${channelId}`)
+  if (setupData) {
+    try {
+      const parsed = JSON.parse(setupData)
+      return parsed.syncProvider || 'trystero'
+    } catch {
+      return 'trystero'
+    }
+  }
+  
+  // Sonra kanal verisine bak
+  const channelData = localStorage.getItem(`retro_channel_${channelId}`)
+  if (channelData) {
+    try {
+      const parsed = JSON.parse(channelData)
+      return parsed.syncProvider || 'trystero'
+    } catch {
+      return 'trystero'
+    }
+  }
+  
+  return 'trystero'
+}
+
+const selectedProvider = getProviderFromSetup()
+console.log('[DEBUG] Using sync provider:', selectedProvider)
 
 const {
   channel,
@@ -138,7 +172,7 @@ const {
   unlikeNote,
   loadChannel,
   loadParticipant
-} = useRetroChannel(channelId)
+} = useRetroChannel(channelId, selectedProvider)
 
 const showJoinModal = ref(false)
 const linkCopied = ref(false)

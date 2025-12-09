@@ -106,6 +106,31 @@
             </button>
           </div>
 
+          <!-- Bağlantı Yöntemi -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-3">
+              Bağlantı Yöntemi
+            </label>
+            <div class="grid grid-cols-3 gap-3">
+              <button
+                v-for="provider in providers"
+                :key="provider.id"
+                type="button"
+                @click="syncProvider = provider.id"
+                :class="[
+                  'p-3 rounded-xl border-2 transition-all text-center',
+                  syncProvider === provider.id
+                    ? 'border-purple-500 bg-purple-50 shadow-md'
+                    : 'border-gray-200 hover:border-purple-300'
+                ]"
+              >
+                <div class="text-2xl mb-1">{{ provider.icon }}</div>
+                <div class="font-semibold text-gray-800 text-sm">{{ provider.name }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ provider.description }}</div>
+              </button>
+            </div>
+          </div>
+
           <!-- Submit Button -->
           <button
             type="submit"
@@ -125,11 +150,22 @@
 </template>
 
 <script setup lang="ts">
+import type { ProviderType } from '~/composables/useSyncProvider'
+import { PROVIDER_INFO } from '~/composables/useSyncProvider'
+
 const router = useRouter()
 
 const channelName = ref('')
 const isAnonymous = ref(true)
 const columns = ref(['İyi Gidenler', 'Geliştirilmesi Gerekenler', 'Aksiyon Maddeleri'])
+const syncProvider = ref<ProviderType>('trystero') // Varsayılan: Trystero
+
+// Provider listesi
+const providers = computed(() => [
+  { id: 'peerjs' as ProviderType, ...PROVIDER_INFO.peerjs },
+  { id: 'trystero' as ProviderType, ...PROVIDER_INFO.trystero },
+  { id: 'gun' as ProviderType, ...PROVIDER_INFO.gun }
+])
 
 function addColumn() {
   columns.value.push('')
@@ -148,7 +184,8 @@ function createRetro() {
     const channelData = {
       name: channelName.value,
       isAnonymous: isAnonymous.value,
-      columns: columns.value.filter(c => c.trim() !== '')
+      columns: columns.value.filter(c => c.trim() !== ''),
+      syncProvider: syncProvider.value // Provider seçimini kaydet
     }
     localStorage.setItem(`retro_setup_${channelId}`, JSON.stringify(channelData))
   }

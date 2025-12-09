@@ -1,6 +1,7 @@
 import { getParticipantColor, getRandomPostItColor } from '~/utils/colors'
 import { generateRandomNickname } from '~/utils/nicknames'
 import type { WebRTCMessage } from './useWebRTC'
+import type { ProviderType, SyncMessage } from './useSyncProvider'
 
 export interface PostItNote {
     id: string
@@ -37,20 +38,66 @@ export interface RetroChannel {
     participants: Participant[]
     createdAt: number
     creatorId: string
+    syncProvider?: ProviderType // Hangi provider kullanıldığı
 }
 
 const STORAGE_PREFIX = 'retro_channel_'
 const PARTICIPANT_KEY = 'retro_participant_'
 
-export function useRetroChannel(channelId: string) {
+export function useRetroChannel(channelId: string, providerType: ProviderType = 'peerjs') {
     const channel = ref<RetroChannel | null>(null)
     const currentParticipant = ref<Participant | null>(null)
+    const activeProvider = ref<ProviderType>(providerType)
 
     const storageKey = `${STORAGE_PREFIX}${channelId}`
     const participantKey = `${PARTICIPANT_KEY}${channelId}`
 
-    // WebRTC composable
+    // Her iki provider'ı da oluştur - sadece aktif olan kullanılacak
     const webrtc = useWebRTC()
+    const trystero = useTrysteroSync()
+
+    // Aktif provider'ın status ve role bilgileri
+    const syncStatus = computed(() => {
+        if (activeProvider.value === 'trystero' && trystero) {
+            return trystero.status.value
+        }
+        return webrtc?.status.value || 'disconnected'
+    })
+
+    const syncRole = computed(() => {
+        if (activeProvider.value === 'trystero' && trystero) {
+            return trystero.role.value
+        }
+        return webrtc?.role.value || null
+    })
+
+    const connectedPeersCount = computed(() => {
+        if (activeProvider.value === 'trystero' && trystero) {
+            return trystero.connectedPeersCount.value
+        }
+        return webrtc?.connectedPeersCount.value || 0
+    })
+
+    // Provider-agnostic helper functions
+    function getActiveRole() {
+        return activeProvider.value === 'trystero' ? trystero.role.value : getActiveRole()
+    }
+
+    function doBroadcast(message: Omit<WebRTCMessage, 'timestamp'>) {
+        if (activeProvider.value === 'trystero') {
+            trystero.broadcast(message as any)
+        } else {
+            doBroadcast(message)
+        }
+    }
+
+    function doSendToHost(message: Omit<WebRTCMessage, 'timestamp'>) {
+        if (activeProvider.value === 'trystero') {
+            trystero.sendToHost(message as any)
+        } else {
+            doSendToHost(message)
+        }
+    }
 
     // Kanal oluştur (Host)
     async function createChannel(name: string, isAnonymous: boolean, columns: string[]): Promise<RetroChannel> {
@@ -87,13 +134,18 @@ export function useRetroChannel(channelId: string) {
         return newChannel
     }
 
-    // Host olarak başlat
+    // Host olarak başlat (aktif provider'a göre)
     async function initializeHost() {
         try {
-            await webrtc.initializeAsHost(channelId)
-            console.log('[DEBUG] WebRTC host initialized successfully')
+            if (activeProvider.value === 'trystero') {
+                await trystero.initializeAsHost(channelId)
+                console.log('[DEBUG] Trystero host initialized successfully')
+            } else {
+                await webrtc.initializeAsHost(channelId)
+                console.log('[DEBUG] WebRTC host initialized successfully')
+            }
         } catch (err) {
-            console.error('[DEBUG] Failed to initialize WebRTC host:', err)
+            console.error('[DEBUG] Failed to initialize host:', err)
             // Hatayı fırlat ki çağıran kod localStorage sync moduna geçebilsin
             throw err
         }
@@ -101,20 +153,31 @@ export function useRetroChannel(channelId: string) {
 
     // Kanala bağlan (Guest) - Retry mekanizmalı
     async function joinChannel(retryCount = 0): Promise<void> {
-        console.log('[DEBUG] joinChannel: Starting attempt', retryCount + 1)
-        // WebRTC guest olarak bağlan
-        try {
-            await webrtc.connectAsGuest(channelId)
-            console.log('[DEBUG] joinChannel: Connected as guest, now requesting sync...')
+        console.log('[DEBUG] joinChannel: Starting attempt', retryCount + 1, 'provider:', activeProvider.value)
 
-            // Kanal verisini iste
-            webrtc.sendToHost({
-                type: 'REQUEST_SYNC',
-                payload: null
-            })
+        try {
+            if (activeProvider.value === 'trystero') {
+                await trystero.connectAsGuest(channelId)
+                console.log('[DEBUG] joinChannel: Connected via Trystero, requesting sync...')
+
+                // Kanal verisini iste
+                trystero.sendToHost({
+                    type: 'REQUEST_SYNC',
+                    payload: null
+                })
+            } else {
+                await webrtc.connectAsGuest(channelId)
+                console.log('[DEBUG] joinChannel: Connected as guest, now requesting sync...')
+
+                // Kanal verisini iste
+                doSendToHost({
+                    type: 'REQUEST_SYNC',
+                    payload: null
+                })
+            }
             console.log('[DEBUG] joinChannel: REQUEST_SYNC sent to host')
         } catch (err) {
-            console.error(`[DEBUG] joinChannel: Failed to connect as guest (attempt ${retryCount + 1}):`, err)
+            console.error(`[DEBUG] joinChannel: Failed to connect (attempt ${retryCount + 1}):`, err)
 
             // 5 kereye kadar tekrar dene (artan bekleme süresiyle)
             if (retryCount < 5) {
@@ -145,7 +208,7 @@ export function useRetroChannel(channelId: string) {
         }
 
         // Host'a katılım mesajı gönder
-        webrtc.sendToHost({
+        doSendToHost({
             type: 'PARTICIPANT_JOINED',
             payload: newParticipant
         })
@@ -178,13 +241,13 @@ export function useRetroChannel(channelId: string) {
         saveChannel(channel.value)
 
         // WebRTC ile broadcast/send
-        if (webrtc.role.value === 'host') {
-            webrtc.broadcast({
+        if (getActiveRole() === 'host') {
+            doBroadcast({
                 type: 'NOTE_ADDED',
                 payload: newNote
             })
-        } else if (webrtc.role.value === 'guest') {
-            webrtc.sendToHost({
+        } else if (getActiveRole() === 'guest') {
+            doSendToHost({
                 type: 'NOTE_ADDED',
                 payload: newNote
             })
@@ -203,13 +266,13 @@ export function useRetroChannel(channelId: string) {
         saveChannel(channel.value)
 
         // WebRTC ile broadcast/send
-        if (webrtc.role.value === 'host') {
-            webrtc.broadcast({
+        if (getActiveRole() === 'host') {
+            doBroadcast({
                 type: 'NOTE_UPDATED',
                 payload: { noteId, content }
             })
-        } else if (webrtc.role.value === 'guest') {
-            webrtc.sendToHost({
+        } else if (getActiveRole() === 'guest') {
+            doSendToHost({
                 type: 'NOTE_UPDATED',
                 payload: { noteId, content }
             })
@@ -230,13 +293,13 @@ export function useRetroChannel(channelId: string) {
         saveChannel(channel.value)
 
         // WebRTC ile broadcast/send
-        if (webrtc.role.value === 'host') {
-            webrtc.broadcast({
+        if (getActiveRole() === 'host') {
+            doBroadcast({
                 type: 'NOTE_DELETED',
                 payload: { noteId }
             })
-        } else if (webrtc.role.value === 'guest') {
-            webrtc.sendToHost({
+        } else if (getActiveRole() === 'guest') {
+            doSendToHost({
                 type: 'NOTE_DELETED',
                 payload: { noteId }
             })
@@ -257,13 +320,13 @@ export function useRetroChannel(channelId: string) {
         saveChannel(channel.value)
 
         // WebRTC ile broadcast/send
-        if (webrtc.role.value === 'host') {
-            webrtc.broadcast({
+        if (getActiveRole() === 'host') {
+            doBroadcast({
                 type: 'NOTE_LIKED',
                 payload: { noteId, userId: currentParticipant.value.id }
             })
-        } else if (webrtc.role.value === 'guest') {
-            webrtc.sendToHost({
+        } else if (getActiveRole() === 'guest') {
+            doSendToHost({
                 type: 'NOTE_LIKED',
                 payload: { noteId, userId: currentParticipant.value.id }
             })
@@ -284,13 +347,13 @@ export function useRetroChannel(channelId: string) {
         saveChannel(channel.value)
 
         // WebRTC ile broadcast/send
-        if (webrtc.role.value === 'host') {
-            webrtc.broadcast({
+        if (getActiveRole() === 'host') {
+            doBroadcast({
                 type: 'NOTE_UNLIKED',
                 payload: { noteId, userId: currentParticipant.value.id }
             })
-        } else if (webrtc.role.value === 'guest') {
-            webrtc.sendToHost({
+        } else if (getActiveRole() === 'guest') {
+            doSendToHost({
                 type: 'NOTE_UNLIKED',
                 payload: { noteId, userId: currentParticipant.value.id }
             })
@@ -366,13 +429,13 @@ export function useRetroChannel(channelId: string) {
     // WebRTC mesaj handler
     function handleWebRTCMessage(message: WebRTCMessage, conn: any) {
         console.log('[DEBUG] handleWebRTCMessage: Received', message.type, 'from', conn?.peer)
-        console.log('[DEBUG] handleWebRTCMessage: Current role:', webrtc.role.value)
+        console.log('[DEBUG] handleWebRTCMessage: Current role:', getActiveRole())
         console.log('[DEBUG] handleWebRTCMessage: Current channel:', channel.value?.id || 'null')
 
         switch (message.type) {
             case 'REQUEST_SYNC':
                 console.log('[DEBUG] REQUEST_SYNC: Processing...')
-                if (webrtc.role.value === 'host' && channel.value) {
+                if (getActiveRole() === 'host' && channel.value) {
                     console.log('[DEBUG] REQUEST_SYNC: Host has channel data, sending SYNC_STATE to:', conn.peer)
                     console.log('[DEBUG] REQUEST_SYNC: Channel data preview:', {
                         id: channel.value.id,
@@ -387,7 +450,7 @@ export function useRetroChannel(channelId: string) {
                         timestamp: Date.now()
                     })
                     console.log('[DEBUG] REQUEST_SYNC: SYNC_STATE sent successfully')
-                } else if (webrtc.role.value === 'host' && !channel.value) {
+                } else if (getActiveRole() === 'host' && !channel.value) {
                     console.error('[DEBUG] REQUEST_SYNC: ERROR - Host has no channel data!')
                 } else {
                     console.log('[DEBUG] REQUEST_SYNC: Ignored (not host or no channel)')
@@ -397,7 +460,7 @@ export function useRetroChannel(channelId: string) {
             case 'SYNC_STATE':
                 // Guest: Host'tan tam state al
                 console.log('[DEBUG] SYNC_STATE: Processing...')
-                if (webrtc.role.value === 'guest') {
+                if (getActiveRole() === 'guest') {
                     const syncedChannel = message.payload as RetroChannel
                     if (syncedChannel) {
                         console.log('[DEBUG] SYNC_STATE: Received channel data from host:', {
@@ -419,13 +482,13 @@ export function useRetroChannel(channelId: string) {
 
             case 'PARTICIPANT_JOINED':
                 // Host: Yeni katılımcıyı ekle ve broadcast et
-                if (webrtc.role.value === 'host' && channel.value) {
+                if (getActiveRole() === 'host' && channel.value) {
                     const newParticipant = message.payload as Participant
                     channel.value.participants.push(newParticipant)
                     saveChannel(channel.value)
 
                     // Yeni katılımcıya mevcut state'i gönder
-                    webrtc.broadcast({
+                    doBroadcast({
                         type: 'SYNC_STATE',
                         payload: channel.value
                     })
@@ -433,7 +496,7 @@ export function useRetroChannel(channelId: string) {
                     console.log('New participant joined:', newParticipant.name)
                 }
                 // Guest: Katılımcı listesini güncelle
-                else if (webrtc.role.value === 'guest' && channel.value) {
+                else if (getActiveRole() === 'guest' && channel.value) {
                     const newParticipant = message.payload as Participant
                     if (!channel.value.participants.find(p => p.id === newParticipant.id)) {
                         channel.value.participants.push(newParticipant)
@@ -452,8 +515,8 @@ export function useRetroChannel(channelId: string) {
                         saveChannel(channel.value)
 
                         // Host ise diğer guest'lere broadcast et
-                        if (webrtc.role.value === 'host') {
-                            webrtc.broadcast({
+                        if (getActiveRole() === 'host') {
+                            doBroadcast({
                                 type: 'NOTE_ADDED',
                                 payload: newNote
                             })
@@ -473,8 +536,8 @@ export function useRetroChannel(channelId: string) {
                         saveChannel(channel.value)
 
                         // Host ise diğer guest'lere broadcast et
-                        if (webrtc.role.value === 'host') {
-                            webrtc.broadcast({
+                        if (getActiveRole() === 'host') {
+                            doBroadcast({
                                 type: 'NOTE_UPDATED',
                                 payload: { noteId, content }
                             })
@@ -493,8 +556,8 @@ export function useRetroChannel(channelId: string) {
                         saveChannel(channel.value)
 
                         // Host ise diğer guest'lere broadcast et
-                        if (webrtc.role.value === 'host') {
-                            webrtc.broadcast({
+                        if (getActiveRole() === 'host') {
+                            doBroadcast({
                                 type: 'NOTE_DELETED',
                                 payload: { noteId }
                             })
@@ -513,8 +576,8 @@ export function useRetroChannel(channelId: string) {
                         saveChannel(channel.value)
 
                         // Host ise diğer guest'lere broadcast et
-                        if (webrtc.role.value === 'host') {
-                            webrtc.broadcast({
+                        if (getActiveRole() === 'host') {
+                            doBroadcast({
                                 type: 'NOTE_LIKED',
                                 payload: { noteId, userId }
                             })
@@ -535,8 +598,8 @@ export function useRetroChannel(channelId: string) {
                             saveChannel(channel.value)
 
                             // Host ise diğer guest'lere broadcast et
-                            if (webrtc.role.value === 'host') {
-                                webrtc.broadcast({
+                            if (getActiveRole() === 'host') {
+                                doBroadcast({
                                     type: 'NOTE_UNLIKED',
                                     payload: { noteId, userId }
                                 })
@@ -581,16 +644,23 @@ export function useRetroChannel(channelId: string) {
         currentParticipant.value = loadParticipant()
         setupStorageListener()
 
-        // WebRTC mesaj handler'ı kaydet
-        webrtc.onMessage(handleWebRTCMessage)
+        // Aktif provider'ın mesaj handler'ını kaydet
+        if (activeProvider.value === 'trystero') {
+            trystero.onMessage((message, peerId) => {
+                handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
+            })
+        } else {
+            webrtc.onMessage(handleWebRTCMessage)
+        }
     })
 
     return {
         channel: channel,
         currentParticipant: currentParticipant,
-        webrtcStatus: webrtc.status,
-        webrtcRole: webrtc.role,
-        connectedPeersCount: webrtc.connectedPeersCount,
+        webrtcStatus: syncStatus,
+        webrtcRole: syncRole,
+        connectedPeersCount: connectedPeersCount,
+        activeProvider: readonly(activeProvider),
         createChannel,
         initializeHost,
         joinChannel,

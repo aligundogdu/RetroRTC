@@ -316,7 +316,7 @@ export function useRetroChannel(channelId: string) {
         }
     }
 
-    // LocalStorage'dan yükle
+    // LocalStorage'dan yükle (ve channel.value'yu güncelle)
     function loadChannel(): RetroChannel | null {
         if (!import.meta.client) return null
 
@@ -328,7 +328,9 @@ export function useRetroChannel(channelId: string) {
 
         try {
             const parsed = JSON.parse(data)
-            console.log('Loaded channel from localStorage:', parsed.id)
+            console.log('[DEBUG] Loaded channel from localStorage:', parsed.id)
+            // channel.value'yu da güncelle ki UI reaktif olsun
+            channel.value = parsed
             return parsed
         } catch (e) {
             console.error('Failed to parse channel data from localStorage:', e)
@@ -344,7 +346,7 @@ export function useRetroChannel(channelId: string) {
         }
     }
 
-    // Katılımcıyı yükle
+    // Katılımcıyı yükle (ve currentParticipant.value'yu güncelle)
     function loadParticipant(): Participant | null {
         if (!import.meta.client) return null
 
@@ -352,7 +354,10 @@ export function useRetroChannel(channelId: string) {
         if (!data) return null
 
         try {
-            return JSON.parse(data)
+            const parsed = JSON.parse(data)
+            // currentParticipant.value'yu da güncelle
+            currentParticipant.value = parsed
+            return parsed
         } catch {
             return null
         }

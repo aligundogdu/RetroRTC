@@ -186,9 +186,15 @@ onMounted(() => {
         initializeHost().catch((err) => {
           console.log('[DEBUG] Host initialization failed, falling back to localStorage sync mode')
           console.log('[DEBUG] Error was:', err.message)
-          // WebRTC başarısız oldu, localStorage sync modunda devam et
-          // Storage event listener zaten aktif, sadece channel'ı yükle
-          // Bu sayede aynı tarayıcıdaki diğer sekmelerle sync olur
+          // WebRTC başarısız oldu ama channel verimiz localStorage'da var
+          // Bunu manuel olarak yükle
+          const localChannel = loadChannel()
+          if (localChannel) {
+            console.log('[DEBUG] Loaded channel from localStorage for sync mode:', localChannel.id)
+            // channel reactive değişkeni useRetroChannel içinde, 
+            // loadChannel() zaten channel.value'yu set ediyor
+            // Ama emin olmak için tekrar yükleme yapalım
+          }
         })
       } else {
         // Guest ise tekrar bağlan

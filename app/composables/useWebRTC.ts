@@ -37,6 +37,7 @@ export function useWebRTC() {
             try {
                 status.value = 'connecting'
                 role.value = 'host'
+                console.log('[DEBUG] Host: Initializing with channelId:', channelId)
 
                 // PeerJS instance oluştur
                 peer.value = new Peer(channelId, {
@@ -46,28 +47,29 @@ export function useWebRTC() {
                 peer.value.on('open', (id) => {
                     peerId.value = id
                     status.value = 'connected'
-                    console.log('Host peer initialized:', id)
+                    console.log('[DEBUG] Host: Peer initialized and ready. ID:', id)
+                    console.log('[DEBUG] Host: Waiting for guest connections...')
                     resolve(id)
                 })
 
                 peer.value.on('connection', (conn) => {
-                    console.log('New guest connection:', conn.peer)
+                    console.log('[DEBUG] Host: New guest connection attempt from:', conn.peer)
                     setupConnection(conn)
                 })
 
                 peer.value.on('error', (err) => {
-                    console.error('Peer error:', err)
+                    console.error('[DEBUG] Host: Peer error:', err.type, err.message)
                     error.value = err.message
                     status.value = 'error'
                     reject(err)
                 })
 
                 peer.value.on('disconnected', () => {
-                    console.log('Peer disconnected')
+                    console.log('[DEBUG] Host: Disconnected from signaling server')
                     status.value = 'disconnected'
                 })
             } catch (err: any) {
-                console.error('Failed to initialize host:', err)
+                console.error('[DEBUG] Host: Failed to initialize:', err)
                 error.value = err.message
                 status.value = 'error'
                 reject(err)
@@ -81,43 +83,63 @@ export function useWebRTC() {
             try {
                 status.value = 'connecting'
                 role.value = 'guest'
+                console.log('[DEBUG] Guest: Starting connection to host:', hostPeerId)
 
                 // PeerJS instance oluştur (random ID)
                 peer.value = new Peer({
                     debug: 2,
                 })
 
+                // Connection timeout - 15 saniye
+                const connectionTimeout = setTimeout(() => {
+                    console.error('[DEBUG] Guest: Connection timeout after 15s - Host may be offline')
+                    console.error('[DEBUG] Guest: Current status:', status.value)
+                    console.error('[DEBUG] Guest: Connections count:', connections.value.length)
+                    error.value = 'Connection timeout - Host may be offline'
+                    status.value = 'error'
+                    reject(new Error('Connection timeout'))
+                }, 15000)
+
                 peer.value.on('open', (id) => {
                     peerId.value = id
-                    console.log('Guest peer initialized:', id)
+                    console.log('[DEBUG] Guest: Peer initialized with ID:', id)
+                    console.log('[DEBUG] Guest: Attempting to connect to host:', hostPeerId)
 
                     // Host'a bağlan
                     const conn = peer.value!.connect(hostPeerId, {
                         reliable: true, // Güvenilir data channel
                     })
 
+                    console.log('[DEBUG] Guest: Connection object created, waiting for open event...')
+
                     setupConnection(conn)
 
                     conn.on('open', () => {
+                        clearTimeout(connectionTimeout)
                         status.value = 'connected'
-                        console.log('Connected to host:', hostPeerId)
+                        console.log('[DEBUG] Guest: Successfully connected to host:', hostPeerId)
                         resolve()
+                    })
+
+                    conn.on('error', (err) => {
+                        console.error('[DEBUG] Guest: Connection-level error:', err)
                     })
                 })
 
                 peer.value.on('error', (err) => {
-                    console.error('Peer error:', err)
+                    clearTimeout(connectionTimeout)
+                    console.error('[DEBUG] Guest: Peer-level error:', err.type, err.message)
                     error.value = err.message
                     status.value = 'error'
                     reject(err)
                 })
 
                 peer.value.on('disconnected', () => {
-                    console.log('Peer disconnected')
+                    console.log('[DEBUG] Guest: Peer disconnected from signaling server')
                     status.value = 'disconnected'
                 })
             } catch (err: any) {
-                console.error('Failed to connect as guest:', err)
+                console.error('[DEBUG] Guest: Failed to initialize:', err)
                 error.value = err.message
                 status.value = 'error'
                 reject(err)

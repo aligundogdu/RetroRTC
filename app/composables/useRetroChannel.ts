@@ -99,25 +99,30 @@ export function useRetroChannel(channelId: string) {
 
     // Kanala bağlan (Guest) - Retry mekanizmalı
     async function joinChannel(retryCount = 0): Promise<void> {
+        console.log('[DEBUG] joinChannel: Starting attempt', retryCount + 1)
         // WebRTC guest olarak bağlan
         try {
             await webrtc.connectAsGuest(channelId)
-            console.log('Connected as guest, requesting sync...')
+            console.log('[DEBUG] joinChannel: Connected as guest, now requesting sync...')
 
             // Kanal verisini iste
             webrtc.sendToHost({
                 type: 'REQUEST_SYNC',
                 payload: null
             })
+            console.log('[DEBUG] joinChannel: REQUEST_SYNC sent to host')
         } catch (err) {
-            console.error(`Failed to connect as guest (attempt ${retryCount + 1}):`, err)
+            console.error(`[DEBUG] joinChannel: Failed to connect as guest (attempt ${retryCount + 1}):`, err)
 
             // 5 kereye kadar tekrar dene (artan bekleme süresiyle)
             if (retryCount < 5) {
                 const delay = 1000 * Math.pow(1.5, retryCount) // 1s, 1.5s, 2.25s...
+                console.log(`[DEBUG] joinChannel: Retrying in ${delay}ms...`)
                 setTimeout(() => {
                     joinChannel(retryCount + 1)
                 }, delay)
+            } else {
+                console.error('[DEBUG] joinChannel: Max retries reached. Host may be offline.')
             }
         }
     }
@@ -353,32 +358,55 @@ export function useRetroChannel(channelId: string) {
 
     // WebRTC mesaj handler
     function handleWebRTCMessage(message: WebRTCMessage, conn: any) {
-        console.log('Handling WebRTC message:', message.type)
+        console.log('[DEBUG] handleWebRTCMessage: Received', message.type, 'from', conn?.peer)
+        console.log('[DEBUG] handleWebRTCMessage: Current role:', webrtc.role.value)
+        console.log('[DEBUG] handleWebRTCMessage: Current channel:', channel.value?.id || 'null')
 
         switch (message.type) {
             case 'REQUEST_SYNC':
+                console.log('[DEBUG] REQUEST_SYNC: Processing...')
                 if (webrtc.role.value === 'host' && channel.value) {
-                    console.log('Received REQUEST_SYNC from:', conn.peer)
+                    console.log('[DEBUG] REQUEST_SYNC: Host has channel data, sending SYNC_STATE to:', conn.peer)
+                    console.log('[DEBUG] REQUEST_SYNC: Channel data preview:', {
+                        id: channel.value.id,
+                        name: channel.value.name,
+                        columnsCount: channel.value.columns.length,
+                        notesCount: channel.value.notes.length,
+                        participantsCount: channel.value.participants.length
+                    })
                     conn.send({
                         type: 'SYNC_STATE',
                         payload: channel.value,
                         timestamp: Date.now()
                     })
+                    console.log('[DEBUG] REQUEST_SYNC: SYNC_STATE sent successfully')
                 } else if (webrtc.role.value === 'host' && !channel.value) {
-                    console.error('Received REQUEST_SYNC but host has no channel data!')
+                    console.error('[DEBUG] REQUEST_SYNC: ERROR - Host has no channel data!')
+                } else {
+                    console.log('[DEBUG] REQUEST_SYNC: Ignored (not host or no channel)')
                 }
                 break
 
             case 'SYNC_STATE':
                 // Guest: Host'tan tam state al
+                console.log('[DEBUG] SYNC_STATE: Processing...')
                 if (webrtc.role.value === 'guest') {
                     const syncedChannel = message.payload as RetroChannel
                     if (syncedChannel) {
-                        console.log('State synced from host:', syncedChannel.id)
+                        console.log('[DEBUG] SYNC_STATE: Received channel data from host:', {
+                            id: syncedChannel.id,
+                            name: syncedChannel.name,
+                            columnsCount: syncedChannel.columns.length,
+                            notesCount: syncedChannel.notes.length,
+                            participantsCount: syncedChannel.participants.length
+                        })
                         saveChannel(syncedChannel)
+                        console.log('[DEBUG] SYNC_STATE: Channel saved successfully')
                     } else {
-                        console.error('Received empty SYNC_STATE payload from host')
+                        console.error('[DEBUG] SYNC_STATE: ERROR - Received empty payload from host')
                     }
+                } else {
+                    console.log('[DEBUG] SYNC_STATE: Ignored (not guest)')
                 }
                 break
 

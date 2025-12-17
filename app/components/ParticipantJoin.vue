@@ -4,7 +4,7 @@
       <div class="text-center mb-6">
         <div class="text-6xl mb-4">👋</div>
         <h2 class="text-2xl font-bold text-gray-800 mb-2">
-          Retrospektife Hoş Geldiniz!
+          {{ t('retro.join_modal.welcome') }}
         </h2>
         <p class="text-gray-600">
           {{ channel?.name }}
@@ -14,19 +14,19 @@
       <form @submit.prevent="handleSubmit" class="space-y-4">
         <div v-if="!channel?.isAnonymous">
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Adınız Soyadınız
+            {{ t('retro.join_modal.name_label') }}
           </label>
           <input
             v-model="participantName"
             type="text"
-            placeholder="Örn: Ahmet Yılmaz"
+            :placeholder="t('retro.join_modal.name_placeholder')"
             class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
             required
           />
         </div>
 
         <div v-else class="bg-purple-50 rounded-xl p-4 border border-purple-200">
-          <p class="text-sm text-gray-600 mb-2">Sizin takma isminiz:</p>
+          <p class="text-sm text-gray-600 mb-2">{{ t('retro.join_modal.your_nickname') }}</p>
           <p class="text-xl font-bold text-purple-600">
             {{ randomNickname }}
           </p>
@@ -36,7 +36,7 @@
           type="submit"
           class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
         >
-          Katıl 🚀
+          {{ t('retro.join_modal.join') }}
         </button>
       </form>
     </div>
@@ -45,6 +45,9 @@
 
 <script setup lang="ts">
 import type { RetroChannel } from '~/composables/useRetroChannel'
+import { useTranslation } from '~/composables/useTranslation'
+
+const { t } = useTranslation()
 
 const props = defineProps<{
   channel: RetroChannel | null

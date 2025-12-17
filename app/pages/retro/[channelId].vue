@@ -1,5 +1,20 @@
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col">
+  <div class="min-h-screen bg-gray-50 flex flex-col relative">
+    <!-- Language Switcher -->
+    <div class="absolute top-4 right-4 flex gap-2 z-10">
+        <button 
+            @click="setLocale('tr')" 
+            class="px-2 py-1 rounded text-xs transition-colors"
+            :class="locale === 'tr' ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+        >TR</button>
+        <div class="w-px bg-gray-300 h-4 my-auto"></div>
+        <button 
+            @click="setLocale('en')" 
+            class="px-2 py-1 rounded text-xs transition-colors"
+            :class="locale === 'en' ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+        >EN</button>
+    </div>
+
     <!-- Join Modal -->
     <ParticipantJoin
       v-if="showJoinModal"
@@ -23,10 +38,10 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h1 class="text-4xl font-bold text-gray-800 mb-2">
-              {{ channel?.name || 'Bağlanıyor...' }}
+              {{ channel?.name || t('retro.loading') }}
             </h1>
             <p class="text-gray-600">
-              {{ channel?.isAnonymous ? '🎭 Anonim Mod' : '👤 İsimli Mod' }}
+              {{ channel?.isAnonymous ? t('retro.anonymous_mod') : t('retro.named_mod') }}
             </p>
           </div>
           
@@ -42,9 +57,9 @@
             <button
               @click="isPresentationMode = !isPresentationMode"
               class="h-10 px-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm font-medium text-gray-700"
-              :title="isPresentationMode ? 'Sunum Modunu Kapat' : 'Sunum Modunu Aç'"
+              :title="isPresentationMode ? t('retro.presentation_mode') : t('retro.normal_mode')"
             >
-              <span>{{ isPresentationMode ? '👁️ Sunum Modu' : '🎭 Normal Mod' }}</span>
+              <span>{{ isPresentationMode ? t('retro.presentation_mode') : t('retro.normal_mode') }}</span>
             </button>
 
             <!-- Share Button -->
@@ -52,7 +67,7 @@
               @click="copyLink"
               class="h-10 px-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm font-medium text-gray-700"
             >
-              <span>{{ linkCopied ? '✓ Kopyalandı' : '🔗 Linki Paylaş' }}</span>
+              <span>{{ linkCopied ? t('retro.copied') : t('retro.share_link') }}</span>
             </button>
 
             <!-- Export Button -->
@@ -60,14 +75,14 @@
               @click="openExportModal"
               class="h-10 px-4 bg-white rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-2 text-sm font-medium text-gray-700"
             >
-              <span>📥 Export</span>
+              <span>{{ t('retro.export') }}</span>
             </button>
           </div>
         </div>
 
         <!-- Participants -->
         <div v-if="channel" class="flex items-center gap-2 flex-wrap">
-          <span class="text-sm text-gray-600">Katılımcılar:</span>
+          <span class="text-sm text-gray-600">{{ t('retro.participants') }}</span>
           <div
             v-for="participant in channel.participants"
             :key="participant.id"
@@ -95,8 +110,8 @@
       <!-- Connecting State -->
       <div v-else class="flex flex-col items-center justify-center py-20">
         <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-indigo-600 mb-4"></div>
-        <h2 class="text-xl font-semibold text-gray-700">Kanal verileri yükleniyor...</h2>
-        <p class="text-gray-500 mt-2">Host ile bağlantı kuruluyor</p>
+        <h2 class="text-xl font-semibold text-gray-700">{{ t('retro.loading') }}</h2>
+        <p class="text-gray-500 mt-2">{{ t('retro.connecting') }}</p>
       </div>
     </div>
 
@@ -104,13 +119,13 @@
     <div v-else class="min-h-screen flex items-center justify-center">
       <div class="text-center">
         <div class="text-6xl mb-4">🔍</div>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Kanal bulunamadı</h2>
-        <p class="text-gray-600 mb-6">Bu retrospektif henüz oluşturulmamış veya host çevrimdışı olabilir.</p>
+        <h2 class="text-2xl font-bold text-gray-800 mb-2">{{ t('retro.not_found_title') }}</h2>
+        <p class="text-gray-600 mb-6">{{ t('retro.not_found_desc') }}</p>
         <NuxtLink
           to="/"
           class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:shadow-lg transition-all inline-block"
         >
-          Ana Sayfaya Dön
+          {{ t('retro.home_button') }}
         </NuxtLink>
       </div>
     </div>
@@ -119,6 +134,9 @@
 
 <script setup lang="ts">
 import type { ProviderType } from '~/composables/useSyncProvider'
+import { useTranslation } from '~/composables/useTranslation'
+
+const { t, locale, setLocale } = useTranslation()
 
 const route = useRoute()
 const channelId = route.params.channelId as string

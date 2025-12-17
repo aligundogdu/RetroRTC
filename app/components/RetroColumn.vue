@@ -6,7 +6,7 @@
         {{ column.name }}
       </h3>
       <p class="text-sm text-gray-500 mt-1">
-        {{ notes.length }} not
+        {{ notes.length }} {{ t('retro.notes') }}
       </p>
     </div>
 
@@ -16,14 +16,14 @@
       @click="showAddNote = true"
       class="w-full mb-4 px-4 py-3 border-2 border-dashed border-gray-300 rounded-xl text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50 transition-all"
     >
-      + Not Ekle
+      {{ t('retro.add_note') }}
     </button>
 
     <!-- Add Note Form -->
     <div v-if="showAddNote" class="mb-4 animate-slide-up">
       <textarea
         v-model="newNoteContent"
-        placeholder="Notunuzu yazın..."
+        :placeholder="t('retro.add_note_placeholder')"
         class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none resize-none"
         rows="3"
         @keydown.enter.ctrl="addNote"
@@ -33,13 +33,13 @@
           @click="addNote"
           class="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
-          Ekle
+          {{ t('retro.add') }}
         </button>
         <button
           @click="cancelAdd"
           class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
         >
-          İptal
+          {{ t('retro.cancel') }}
         </button>
       </div>
     </div>
@@ -64,6 +64,9 @@
 
 <script setup lang="ts">
 import type { Column, PostItNote, Participant } from '~/composables/useRetroChannel'
+import { useTranslation } from '~/composables/useTranslation'
+
+const { t } = useTranslation()
 
 const props = defineProps<{
   column: Column

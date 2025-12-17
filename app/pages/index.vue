@@ -1,30 +1,45 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-6">
+  <div class="min-h-screen flex items-center justify-center p-6 relative">
+    <!-- Language Switcher -->
+    <div class="absolute top-6 right-6 flex gap-2">
+        <button 
+            @click="setLocale('tr')" 
+            class="px-3 py-1 rounded transition-colors"
+            :class="locale === 'tr' ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+        >TR</button>
+        <div class="w-px bg-gray-300 h-6 my-auto"></div>
+        <button 
+            @click="setLocale('en')" 
+            class="px-3 py-1 rounded transition-colors"
+            :class="locale === 'en' ? 'bg-purple-100 text-purple-700 font-bold' : 'text-gray-500 hover:text-gray-700'"
+        >EN</button>
+    </div>
+
     <div class="max-w-2xl w-full">
       <!-- Header -->
       <div class="text-center mb-12 animate-fade-in">
         <h1 class="text-6xl font-bold mb-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-          RetroRTC
+          {{ t('home.title') }}
         </h1>
         <p class="text-xl text-gray-600">
-          Takımınız için anonim retrospektif aracı
+          {{ t('home.subtitle') }}
         </p>
       </div>
 
       <!-- Kanal Oluşturma Formu -->
       <div class="bg-white/80 backdrop-blur-lg rounded-3xl shadow-2xl p-8 border border-white/20 animate-slide-up">
-        <h2 class="text-2xl font-semibold mb-6 text-gray-800">Yeni Retrospektif Oluştur</h2>
+        <h2 class="text-2xl font-semibold mb-6 text-gray-800">{{ t('home.form.title') }}</h2>
         
         <form @submit.prevent="createRetro" class="space-y-6">
           <!-- Kanal Adı -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
-              Retrospektif Adı
+              {{ t('home.form.name_label') }}
             </label>
             <input
               v-model="channelName"
               type="text"
-              placeholder="Örn: Sprint 24 Retrospektifi"
+              :placeholder="t('home.form.name_placeholder')"
               class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
               required
             />
@@ -33,7 +48,7 @@
           <!-- Mod Seçimi -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">
-              Katılımcı Modu
+              {{ t('home.form.mode_label') }}
             </label>
             <div class="grid grid-cols-2 gap-4">
               <button
@@ -47,8 +62,8 @@
                 ]"
               >
                 <div class="text-3xl mb-2">🎭</div>
-                <div class="font-semibold text-gray-800">Anonim</div>
-                <div class="text-xs text-gray-500 mt-1">Rastgele takma isimler</div>
+                <div class="font-semibold text-gray-800">{{ t('home.form.mode_anonymous') }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ t('home.form.mode_anonymous_desc') }}</div>
               </button>
               
               <button
@@ -62,8 +77,8 @@
                 ]"
               >
                 <div class="text-3xl mb-2">👤</div>
-                <div class="font-semibold text-gray-800">İsimli</div>
-                <div class="text-xs text-gray-500 mt-1">Gerçek isimler görünsün</div>
+                <div class="font-semibold text-gray-800">{{ t('home.form.mode_named') }}</div>
+                <div class="text-xs text-gray-500 mt-1">{{ t('home.form.mode_named_desc') }}</div>
               </button>
             </div>
           </div>
@@ -71,7 +86,7 @@
           <!-- Kolonlar -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">
-              Kolonlar
+              {{ t('home.form.columns_label') }}
             </label>
             <div class="space-y-2 mb-3">
               <div
@@ -82,7 +97,7 @@
                 <input
                   v-model="columns[index]"
                   type="text"
-                  placeholder="Kolon adı"
+                  :placeholder="t('home.form.column_placeholder')"
                   class="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all outline-none"
                   required
                 />
@@ -102,14 +117,14 @@
               @click="addColumn"
               class="w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-purple-400 hover:text-purple-600 transition-all"
             >
-              + Kolon Ekle
+              {{ t('home.form.add_column') }}
             </button>
           </div>
 
           <!-- Bağlantı Yöntemi -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-3">
-              Bağlantı Yöntemi
+              {{ t('home.form.connection_label') }}
             </label>
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <button
@@ -134,13 +149,13 @@
           <!-- Supabase Custom Credentials -->
           <div v-if="syncProvider === 'supabase'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 animate-fade-in">
             <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <span>⚡ Supabase Ayarları</span>
-              <span class="text-xs font-normal text-gray-500">(Kendi projenizi kullanın)</span>
+              <span>{{ t('home.supabase.title') }}</span>
+              <span class="text-xs font-normal text-gray-500">{{ t('home.supabase.subtitle') }}</span>
             </h3>
             
             <div class="grid grid-cols-1 gap-4">
               <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Project URL</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('home.supabase.url_label') }}</label>
                 <input
                   v-model="supabaseUrl"
                   type="text"
@@ -150,7 +165,7 @@
               </div>
               
               <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">Anon Key</label>
+                <label class="block text-xs font-medium text-gray-600 mb-1">{{ t('home.supabase.key_label') }}</label>
                 <input
                   v-model="supabaseKey"
                   type="password"
@@ -162,7 +177,7 @@
 
             <div class="mt-3 text-xs text-amber-600 flex gap-2">
               <span>⚠️</span>
-              <p>Bu bilgiler kanal URL'si içinde şifreli olarak paylaşılacaktır. Sadece 'Anon Public' key kullanın.</p>
+              <p>{{ t('home.supabase.warning') }}</p>
             </div>
           </div>
 
@@ -171,14 +186,14 @@
             type="submit"
             class="w-full py-4 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all"
           >
-            Retrospektif Oluştur 🚀
+            {{ t('home.form.submit') }}
           </button>
         </form>
       </div>
 
       <!-- Footer -->
       <div class="text-center mt-8 text-gray-500 text-sm">
-        <p>Backend gerektirmez • Tüm veriler tarayıcınızda saklanır</p>
+        <p>{{ t('home.form.footer') }}</p>
       </div>
     </div>
   </div>
@@ -187,7 +202,9 @@
 <script setup lang="ts">
 import type { ProviderType } from '~/composables/useSyncProvider'
 import { PROVIDER_INFO } from '~/composables/useSyncProvider'
+import { useTranslation } from '~/composables/useTranslation'
 
+const { t, locale, setLocale } = useTranslation()
 const router = useRouter()
 
 const channelName = ref('')
@@ -197,10 +214,10 @@ const syncProvider = ref<ProviderType>('trystero') // Varsayılan: Trystero
 
 // Provider listesi
 const providers = computed(() => [
-  { id: 'peerjs' as ProviderType, ...PROVIDER_INFO.peerjs },
-  { id: 'trystero' as ProviderType, ...PROVIDER_INFO.trystero },
-  { id: 'gun' as ProviderType, ...PROVIDER_INFO.gun },
-  { id: 'supabase' as ProviderType, ...PROVIDER_INFO.supabase }
+  { id: 'peerjs' as ProviderType, ...PROVIDER_INFO.peerjs, description: t('providers.peerjs.description') },
+  { id: 'trystero' as ProviderType, ...PROVIDER_INFO.trystero, description: t('providers.trystero.description') },
+  { id: 'gun' as ProviderType, ...PROVIDER_INFO.gun, description: t('providers.gun.description') },
+  { id: 'supabase' as ProviderType, ...PROVIDER_INFO.supabase, description: t('providers.supabase.description') }
 ])
 
 const supabaseUrl = ref('')

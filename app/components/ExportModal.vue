@@ -33,6 +33,20 @@
           </button>
           <pre style="font-size: 14px; font-family: monospace; color: #1f2937; white-space: pre-wrap; margin: 0; padding-right: 30px;">{{ markdownContent }}</pre>
         </div>
+
+        <!-- Technical Backup Section -->
+        <div style="margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+            <h3 style="font-size: 14px; font-weight: 600; color: #4b5563; margin-bottom: 8px;">{{ t('retro.export_modal.json_backup_title') }}</h3>
+            <button 
+                @click="handleDownloadJson"
+                style="background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; border-radius: 8px; padding: 8px 16px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.2s;"
+                onmouseover="this.style.backgroundColor='#e5e7eb'"
+                onmouseout="this.style.backgroundColor='#f3f4f6'"
+            >
+                <span>📦</span>
+                {{ t('retro.export_modal.download_json') }}
+            </button>
+        </div>
       </div>
     </div>
   </div>
@@ -93,5 +107,22 @@ function handleCopy() {
   setTimeout(() => {
     copied.value = false
   }, 2000)
+}
+
+function handleDownloadJson() {
+    if (!import.meta.client || !props.channel) return
+
+    const jsonString = JSON.stringify(props.channel, null, 2)
+    const blob = new Blob([jsonString], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    // sanitized name + timestamp
+    const safeName = props.channel.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+    a.download = `retro_backup_${safeName}_${Date.now()}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
 }
 </script>

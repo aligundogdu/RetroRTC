@@ -194,6 +194,20 @@
       <!-- Footer -->
       <div class="text-center mt-8 text-gray-500 text-sm">
         <p>{{ t('home.form.footer') }}</p>
+        
+        <!-- Import Backup -->
+        <div class="mt-4 pt-4 border-t border-gray-200/50">
+            <label class="inline-flex items-center gap-2 cursor-pointer text-xs text-gray-400 hover:text-purple-600 transition-colors">
+                <span>📂</span>
+                <span>{{ t('home.import_backup') }}</span>
+                <input 
+                    type="file" 
+                    accept=".json"
+                    class="hidden"
+                    @change="handleImportBackup"
+                />
+            </label>
+        </div>
       </div>
     </div>
   </div>
@@ -203,6 +217,7 @@
 import type { ProviderType } from '~/composables/useSyncProvider'
 import { PROVIDER_INFO } from '~/composables/useSyncProvider'
 import { useTranslation } from '~/composables/useTranslation'
+import type { RetroChannel } from '~/composables/useRetroChannel'
 
 const { t, locale, setLocale } = useTranslation()
 const router = useRouter()
@@ -236,6 +251,121 @@ function addColumn() {
 
 function removeColumn(index: number) {
   columns.value.splice(index, 1)
+}
+
+function handleImportBackup(event: Event) {
+    const input = event.target as HTMLInputElement
+    if (!input.files || input.files.length === 0) return
+
+    const file = input.files[0]
+    const reader = new FileReader()
+
+    reader.onload = (e) => {
+        try {
+            const json = e.target?.result as string
+            const backup: RetroChannel = JSON.parse(json)
+
+            // Validate structure loosely
+            if (!backup.id || !backup.name || !Array.isArray(backup.columns) || !Array.isArray(backup.notes)) {
+                alert('Invalid backup file format')
+                return
+            }
+
+            // Generate NEW ID for the imported channel to act as a "migration" into a fresh room
+            const newChannelId = generateChannelId()
+
+            // Construct new channel data
+            const newChannelData: RetroChannel = {
+                ...backup,
+                id: newChannelId, // Override ID
+                participants: [], // Reset participants for clean slate (Host will join automatically)
+                // Use selected sync provider from UI or keep from backup?
+                // Better to respect UI selection since user might want to switch providers during migration
+                // But wait, the user selects provider BEFORE import?
+                // The import button is separate.
+                // Let's use the UI default (Trystero) OR try to detect.
+                // Actually, let's keep the user's current selection from the form if they made one, OR default.
+                // We'll update the syncProvider in the backup to match what's in the form logic below?
+                // No, simpler: Just use what's in the backup?
+                // If the backup has 'supabase', maybe they want to keep it.
+                // But if they are migrating BECAUSE of provider issues, they likely want to change it.
+                // Let's use the `syncProvider.value` from the form (which defaults to Trystero).
+            }
+
+            // But wait, `createRetro` below sets `syncProvider` based on the dropdown.
+            // If the user hasn't touched the dropdown, it's Trystero.
+            // Let's stick with that.
+            
+            // Save to localStorage
+            if (process.client) {
+                // Save channel data directly
+                localStorage.setItem(`retro_channel_${newChannelId}`, JSON.stringify(newChannelData))
+                
+                // Also create and save the Setup data so `retro/[id].vue` knows what provider to use
+                // logic in `getProviderFromSetup` checks `retro_setup_ID` or `retro_channel_ID`
+                // But `retro_channel` has it inside usually? No, `RetroChannel` interface doesn't strictly have `syncProvider` field by default in the interface definition?
+                // Let's check RetroChannel interface...
+                // It is defined in useRetroChannel.ts.
+                
+                // Let's assume we need to save setup data too for provider consistency
+                 const channelData = {
+                    name: newChannelData.name,
+                    isAnonymous: newChannelData.isAnonymous,
+                    columns: newChannelData.columns.map(c => c.name), // Setup expects string[]
+                    syncProvider: syncProvider.value // Use the current dropdown value!
+                }
+                localStorage.setItem(`retro_setup_${newChannelId}`, JSON.stringify(channelData))
+                
+                // Create local participant as Host/Creator
+                // Use a default name or "Host"
+                // Actually `[channelId].vue` handles creation if not found.
+                // But we want to claim "Creator" status.
+                // If we let `[channelId].vue` auto-create, it might just join as guest?
+                // No, it checks `localStorage`.
+                // Let's just navigate. `[channelId].vue` will see `retro_channel_ID` exists.
+                // It calls `loadChannel`.
+                // Then `initializeHost` needs to be called.
+                // `onMounted` logic:
+                // if (existingChannel) { if (!existingParticipant) { joinChannel() } }
+                // `joinChannel` will add us as a participant.
+                // We need to be the HOST.
+                
+                // WORKAROUND: We manually create the participant here and save it.
+                const hostId = Math.random().toString(36).substring(2, 9)
+                const hostPart = {
+                    id: hostId,
+                    name: 'Host (Admin)', // Default name
+                    isCreator: true,
+                    color: '#8B5CF6', // Purple
+                    joinedAt: Date.now()
+                }
+                localStorage.setItem(`retro_participant_${newChannelId}`, JSON.stringify(hostPart))
+                
+                // Also add this participant to the channel data we just saved!
+                newChannelData.participants = [hostPart]
+                localStorage.setItem(`retro_channel_${newChannelId}`, JSON.stringify(newChannelData))
+            }
+
+            // Construct query
+             const query: any = { p: syncProvider.value }
+             if (syncProvider.value === 'supabase' && supabaseUrl.value && supabaseKey.value) {
+                const creds = JSON.stringify({ u: supabaseUrl.value, k: supabaseKey.value })
+                query.c = btoa(creds)
+            }
+
+            // Redirect
+             router.push({
+                path: `/retro/${newChannelId}`,
+                query
+            })
+        } catch (err) {
+            console.error(err)
+            alert('Failed to parse backup file')
+        }
+    }
+    if (file) {
+        reader.readAsText(file)
+    }
 }
 
 function createRetro() {

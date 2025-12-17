@@ -3,6 +3,7 @@ export const messages = {
         home: {
             title: 'RetroRTC',
             subtitle: 'Takımınız için anonim retrospektif aracı',
+            import_backup: 'Yedekten Yükle (JSON)',
             form: {
                 title: 'Yeni Retrospektif Oluştur',
                 name_label: 'Retrospektif Adı',
@@ -62,6 +63,8 @@ export const messages = {
                 copy: 'Kopyala',
                 copied: 'Kopyalandı',
                 download: 'İndir',
+                download_json: 'JSON Yedeği İndir',
+                json_backup_title: 'Teknik Yedek (Geri Yükleme İçin)',
                 close: 'Kapat'
             }
         },
@@ -88,6 +91,7 @@ export const messages = {
         home: {
             title: 'RetroRTC',
             subtitle: 'Anonymous retrospective tool for your team',
+            import_backup: 'Import from Backup (JSON)',
             form: {
                 title: 'Create New Retrospective',
                 name_label: 'Retrospective Name',
@@ -147,6 +151,8 @@ export const messages = {
                 copy: 'Copy',
                 copied: 'Copied',
                 download: 'Download',
+                download_json: 'Download JSON Backup',
+                json_backup_title: 'Technical Backup (For Restore)',
                 close: 'Close'
             }
         },

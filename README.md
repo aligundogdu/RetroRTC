@@ -7,9 +7,10 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Nuxt-4.x-00DC82?style=flat-square&logo=nuxt.js" alt="Nuxt 4">
+  <img src="https://img.shields.io/badge/Nuxt-3.x-00DC82?style=flat-square&logo=nuxt.js" alt="Nuxt 3">
   <img src="https://img.shields.io/badge/Vue-3.x-4FC08D?style=flat-square&logo=vue.js" alt="Vue 3">
   <img src="https://img.shields.io/badge/WebRTC-P2P-FF6B6B?style=flat-square" alt="WebRTC">
+  <img src="https://img.shields.io/badge/Supabase-Realtime-3ECF8E?style=flat-square&logo=supabase" alt="Supabase">
   <img src="https://img.shields.io/badge/Backend-None!-success?style=flat-square" alt="No Backend">
 </p>
 
@@ -19,20 +20,24 @@
 
 ---
 
-## 🇬🇧 English
+[🇺🇸 English](#-english) | [🇹🇷 Türkçe](#-türkçe)
+
+---
+
+## 🇺🇸 English
 
 ### 📜 Manifesto
 
 > **"Your ideas are yours. Your data should be too."**
 
-RetroRTC is designed to let teams run their retrospective meetings freely. A fully peer-to-peer (P2P) retrospective tool that doesn't need central servers, third-party services, or registration forms.
+RetroRTC is designed to let teams run their retrospective meetings freely. A tool that prioritizes privacy, supports multiple synchronization methods, and doesn't require central servers, third-party services, or registration forms.
 
 #### Why RetroRTC?
 
-- 🔒 **Privacy First**: No data is sent to our servers. All data lives only in participants' browsers.
+- 🔒 **Privacy First**: No data is sent to our servers by default. P2P modes allow data to live only in participants' browsers.
 - 🎭 **Anonymous Participation**: Share your ideas freely with fun nicknames like "Cosmic Panda 42" or "Ninja Unicorn 7".
 - ⚡ **Zero Setup**: No registration, no downloads, no configuration. Just share a link and start.
-- 🌐 **P2P Architecture**: Host and participants communicate directly with each other. No server in between.
+- 🌐 **Flexible Sync**: Choose between **WebRTC (P2P)**, **Trystero (BitTorrent)**, or **Supabase (Realtime)** based on your network needs.
 - 💾 **Full Control**: Retrospective data stays in your browser. Delete or export anytime you want.
 
 ---
@@ -41,7 +46,8 @@ RetroRTC is designed to let teams run their retrospective meetings freely. A ful
 
 | Feature | Description |
 |---------|-------------|
-| 🔄 **Real-time Sync** | Instant note sharing over WebRTC |
+| 🔄 **Multi-Provider Sync** | Support for PeerJS, Trystero (BitTorrent), and Supabase Realtime |
+| 🌍 **Multi-Language** | Native support for English and Turkish |
 | 🎭 **Anonymous/Named Mode** | Choose participation mode based on team preference |
 | 📝 **Customizable Columns** | Default or custom column names |
 | 🎨 **Colorful Post-it Notes** | 8 different pastel color options |
@@ -87,27 +93,23 @@ RetroRTC is designed to let teams run their retrospective meetings freely. A ful
 #### Step by Step Usage
 
 1. **Create a Retrospective**
-   - Fill out the "Create New Retrospective" form on the home page
-   - Enter a retrospective name (e.g., "Sprint 24 Retrospective")
-   - Choose Anonymous or Named mode
-   - Customize columns or use defaults
+   - Fill out the "Create New Retrospective" form on the home page.
+   - Enter a retrospective name.
+   - Choose default language (TR/EN).
+   - Select **Sync Provider**:
+     - **PeerJS / Trystero**: Best for open networks (P2P).
+     - **Supabase**: Best for restrictive networks (VPNs/Firewalls). You can provide your own Supabase credentials!
+   - Customize columns.
 
 2. **Share the Link**
-   - Share the unique generated link with team members
-   - Everyone can join by clicking the same link
+   - Share the unique generated link with team members.
 
-3. **Add Notes**
-   - Add notes to relevant columns
-   - Your notes sync instantly with all participants
-   - You can edit or delete your own notes
+3. **Add Notes & Discuss**
+   - Add notes, edit them, and vote on others' ideas.
+   - Everything syncs in real-time.
 
-4. **Like and Discuss**
-   - Give ❤️ to notes you find important
-   - Like counts help prioritize ideas
-
-5. **Export Results**
-   - Download in Markdown format with the Export button
-   - Choose to include likes and author information
+4. **Export Results**
+   - Download the board as a Markdown file.
 
 ---
 
@@ -115,9 +117,11 @@ RetroRTC is designed to let teams run their retrospective meetings freely. A ful
 
 | Technology | Version | Description |
 |------------|---------|-------------|
-| [Nuxt](https://nuxt.com) | 4.x | Vue meta-framework |
+| [Nuxt](https://nuxt.com) | 3.x | Vue meta-framework |
 | [Vue](https://vuejs.org) | 3.x | Reactive UI framework |
 | [PeerJS](https://peerjs.com) | 1.5.x | WebRTC abstraction layer |
+| [Trystero](https://github.com/dmotz/trystero) | 0.x | WebRTC over BitTorrent/IPFS |
+| [Supabase](https://supabase.com) | 2.x | Realtime Sync Provider (Optional) |
 | [TailwindCSS](https://tailwindcss.com) | 3.x | Utility-first CSS |
 
 ---
@@ -150,121 +154,21 @@ npm run preview
 
 ---
 
-### 🏗 Technical Architecture
-
-#### Host/Guest Model
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    WebRTC P2P ARCHITECTURE                  │
-└─────────────────────────────────────────────────────────────┘
-
-                        ┌──────────┐
-                        │  PeerJS  │
-                        │ Signaling│
-                        │  Server  │
-                        └────┬─────┘
-                             │ (Connection setup only)
-              ┌──────────────┼──────────────┐
-              │              │              │
-              ▼              ▼              ▼
-        ┌──────────┐  ┌──────────┐  ┌──────────┐
-        │   HOST   │  │  GUEST   │  │  GUEST   │
-        │  (Retro  │◀─│  (Team   │  │  (Team   │
-        │  Owner)  │  │  Member) │  │  Member) │
-        └──────────┘  └──────────┘  └──────────┘
-              │              │              │
-              └──────────────┼──────────────┘
-                             │
-                    Direct P2P Connection
-                    (Data never hits a server)
-```
-
-- **Host**: The person who creates the retrospective. Registers with PeerJS using channel ID.
-- **Guest**: Participants. Connect to the host's peer ID (channel ID).
-- **Data Flow**: All messages are transmitted directly between browsers.
-
-#### WebRTC Message Types
-
-| Message Type | Direction | Description |
-|--------------|-----------|-------------|
-| `REQUEST_SYNC` | Guest → Host | Request current state |
-| `SYNC_STATE` | Host → Guest | Send full channel data |
-| `NOTE_ADDED` | Bidirectional | New note added |
-| `NOTE_UPDATED` | Bidirectional | Note updated |
-| `NOTE_DELETED` | Bidirectional | Note deleted |
-| `NOTE_LIKED` | Bidirectional | Like added to note |
-| `NOTE_UNLIKED` | Bidirectional | Like removed |
-| `PARTICIPANT_JOINED` | Guest → Host → All | New participant |
-
-#### localStorage Structure
-
-```javascript
-// Channel data
-localStorage["retro_channel_{channelId}"] = {
-  id: "abc123",
-  name: "Sprint Retrospective",
-  isAnonymous: true,
-  columns: [...],
-  notes: [...],
-  participants: [...]
-}
-
-// Participant info
-localStorage["retro_participant_{channelId}"] = {
-  id: "user123",
-  name: "Cosmic Panda 42",
-  color: "#FF6B6B"
-}
-```
-
----
-
-### 📁 Project Structure
-
-```
-RetroRtc/
-├── app/
-│   ├── app.vue                 # Main application component
-│   ├── components/
-│   │   ├── ConnectionStatus.vue    # WebRTC connection status
-│   │   ├── ExportModal.vue         # Markdown export modal
-│   │   ├── ParticipantJoin.vue     # Join form
-│   │   ├── PostItNote.vue          # Post-it note component
-│   │   ├── RetroBoard.vue          # Main retro board
-│   │   └── RetroColumn.vue         # Column component
-│   ├── composables/
-│   │   ├── useRetroChannel.ts      # Channel management
-│   │   └── useWebRTC.ts            # WebRTC operations
-│   ├── pages/
-│   │   ├── index.vue               # Home page (creation form)
-│   │   └── retro/
-│   │       └── [channelId].vue     # Retro room
-│   └── utils/
-│       ├── colors.ts               # Color palettes
-│       └── nicknames.ts            # Nickname generator
-├── nuxt.config.ts
-├── tailwind.config.js
-└── package.json
-```
-
----
-
 ## 🇹🇷 Türkçe
 
 ### 📜 Manifesto
 
 > **"Fikirleriniz sizin. Verileriniz de sizin olmalı."**
 
-RetroRTC, takımların retrospektif toplantılarını özgürce yapabilmesi için tasarlandı. Merkezi sunuculara, üçüncü taraf servislerine veya kayıt formlarına ihtiyaç duymadan, tamamen peer-to-peer (P2P) çalışan bir retrospektif aracı.
+RetroRTC, takımların retrospektif toplantılarını özgürce yapabilmesi için tasarlandı. Gizliliği ön planda tutan, farklı senkronizasyon yöntemlerini destekleyen, merkezi sunuculara veya kayıtlara ihtiyaç duymayan bir araç.
 
 #### Neden RetroRTC?
 
-- 🔒 **Gizlilik Öncelikli**: Hiçbir veri sunucularımıza gönderilmez. Tüm veriler yalnızca katılımcıların tarayıcılarında yaşar.
-- 🎭 **Anonim Katılım**: "Kozmik Panda 42" veya "Ninja Unicorn 7" gibi eğlenceli takma isimlerle fikirlerinizi özgürce paylaşın.
-- ⚡ **Sıfır Kurulum**: Kayıt yok, indirme yok, yapılandırma yok. Sadece link paylaşın ve başlayın.
-- 🌐 **P2P Mimari**: Host ve katılımcılar doğrudan birbirleriyle iletişim kurar. Arada hiçbir sunucu yok.
-- 💾 **Tam Kontrol**: Retrospektif verileri tarayıcınızda kalır. İstediğiniz zaman silin, dışa aktarın.
+- 🔒 **Gizlilik Öncelikli**: Varsayılan olarak sunucularımıza veri gönderilmez. P2P modları verilerin sadece tarayıcıda kalmasını sağlar.
+- 🎭 **Anonim Katılım**: "Kozmik Panda 42" gibi eğlenceli takma isimlerle fikirlerinizi özgürce paylaşın.
+- ⚡ **Sıfır Kurulum**: Kayıt yok, indirme yok. Sadece link paylaşın ve başlayın.
+- 🌐 **Esnek Senkronizasyon**: Ağ durumunuza göre **WebRTC (P2P)**, **Trystero (BitTorrent)** veya **Supabase (Realtime)** seçebilirsiniz.
+- 💾 **Tam Kontrol**: Veriler tarayıcınızda kalır. İstediğiniz zaman silin, dışa aktarın.
 
 ---
 
@@ -272,7 +176,8 @@ RetroRTC, takımların retrospektif toplantılarını özgürce yapabilmesi içi
 
 | Özellik | Açıklama |
 |---------|----------|
-| 🔄 **Gerçek Zamanlı Senkronizasyon** | WebRTC üzerinden anlık not paylaşımı |
+| 🔄 **Çoklu Senkronizasyon** | PeerJS, Trystero (BitTorrent) ve Supabase Realtime desteği |
+| 🌍 **Çoklu Dil** | Türkçe ve İngilizce yerel dil desteği |
 | 🎭 **Anonim/İsimli Mod** | Takım tercihine göre katılım modu seçimi |
 | 📝 **Özelleştirilebilir Kolonlar** | Varsayılan veya özel kolon isimleri |
 | 🎨 **Renkli Post-it Notları** | 8 farklı pastel renk seçeneği |
@@ -318,27 +223,22 @@ RetroRTC, takımların retrospektif toplantılarını özgürce yapabilmesi içi
 #### Adım Adım Kullanım
 
 1. **Retrospektif Oluştur**
-   - Ana sayfada "Yeni Retrospektif Oluştur" formunu doldurun
-   - Retrospektif adı girin (örn: "Sprint 24 Retrospektifi")
-   - Anonim veya İsimli mod seçin
-   - Kolonları özelleştirin veya varsayılanları kullanın
+   - Ana sayfadaki formu doldurun.
+   - Dil seçiminizi yapın (TR/EN).
+   - **Bağlantı Yöntemi** seçin:
+     - **PeerJS / Trystero**: Açık ağlar için ideal (P2P).
+     - **Supabase**: Kısıtlı ağlar (VPN/Güvenlik Duvarı) için ideal. Kendi Supabase bilgilerinizi girebilirsiniz!
+   - Kolonları özelleştirin.
 
 2. **Linki Paylaş**
-   - Oluşturulan benzersiz linki takım üyeleriyle paylaşın
-   - Herkes aynı linke tıklayarak katılabilir
+   - Oluşturulan linki takımla paylaşın.
 
-3. **Notlar Ekle**
-   - İlgili kolona not ekleyin
-   - Notlarınız anında tüm katılımcılarla senkronize olur
-   - Kendi notlarınızı düzenleyebilir veya silebilirsiniz
+3. **Notlar Ekle & Tartış**
+   - Not ekleyin, düzenleyin, oylayın.
+   - Her şey anlık senkronize olur.
 
-4. **Beğen ve Tartış**
-   - Önemli bulduğunuz notlara ❤️ verin
-   - Beğeni sayısı fikirlerin önceliklendirilmesine yardımcı olur
-
-5. **Sonuçları Dışa Aktar**
-   - Export butonuyla Markdown formatında indirin
-   - Beğeni ve yazar bilgilerini dahil edip etmemeyi seçin
+4. **Sonuçları Dışa Aktar**
+   - Markdown formatında indirin.
 
 ---
 
@@ -346,9 +246,11 @@ RetroRTC, takımların retrospektif toplantılarını özgürce yapabilmesi içi
 
 | Teknoloji | Versiyon | Açıklama |
 |-----------|----------|----------|
-| [Nuxt](https://nuxt.com) | 4.x | Vue meta-framework |
+| [Nuxt](https://nuxt.com) | 3.x | Vue meta-framework |
 | [Vue](https://vuejs.org) | 3.x | Reaktif UI framework |
 | [PeerJS](https://peerjs.com) | 1.5.x | WebRTC soyutlama katmanı |
+| [Trystero](https://github.com/dmotz/trystero) | 0.x | BitTorrent/IPFS üzerinden WebRTC |
+| [Supabase](https://supabase.com) | 2.x | Realtime Senkronizasyon (Opsiyonel) |
 | [TailwindCSS](https://tailwindcss.com) | 3.x | Utility-first CSS |
 
 ---
@@ -381,109 +283,7 @@ npm run preview
 
 ---
 
-### 🏗 Teknik Mimari
-
-#### Host/Guest Modeli
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     WebRTC P2P MİMARİSİ                     │
-└─────────────────────────────────────────────────────────────┘
-
-                        ┌──────────┐
-                        │  PeerJS  │
-                        │ Signaling│
-                        │  Server  │
-                        └────┬─────┘
-                             │ (Sadece bağlantı kurulumu)
-              ┌──────────────┼──────────────┐
-              │              │              │
-              ▼              ▼              ▼
-        ┌──────────┐  ┌──────────┐  ┌──────────┐
-        │  HOST    │  │  GUEST   │  │  GUEST   │
-        │ (Retro   │◀─│ (Takım   │  │ (Takım   │
-        │  Sahibi) │  │  Üyesi)  │  │  Üyesi)  │
-        └──────────┘  └──────────┘  └──────────┘
-              │              │              │
-              └──────────────┼──────────────┘
-                             │
-                    Doğrudan P2P Bağlantı
-                    (Veri sunucuya gitmez)
-```
-
-- **Host**: Retrospektifi oluşturan kişi. Kanal ID'si ile PeerJS'e kayıt olur.
-- **Guest**: Katılımcılar. Host'un peer ID'sine (kanal ID) bağlanır.
-- **Veri Akışı**: Tüm mesajlar doğrudan tarayıcılar arasında iletilir.
-
-#### WebRTC Mesaj Tipleri
-
-| Mesaj Tipi | Yön | Açıklama |
-|------------|-----|----------|
-| `REQUEST_SYNC` | Guest → Host | Mevcut state'i iste |
-| `SYNC_STATE` | Host → Guest | Tam kanal verisini gönder |
-| `NOTE_ADDED` | Çift yönlü | Yeni not eklendi |
-| `NOTE_UPDATED` | Çift yönlü | Not güncellendi |
-| `NOTE_DELETED` | Çift yönlü | Not silindi |
-| `NOTE_LIKED` | Çift yönlü | Nota beğeni eklendi |
-| `NOTE_UNLIKED` | Çift yönlü | Beğeni kaldırıldı |
-| `PARTICIPANT_JOINED` | Guest → Host → All | Yeni katılımcı |
-
-#### localStorage Yapısı
-
-```javascript
-// Kanal verisi
-localStorage["retro_channel_{channelId}"] = {
-  id: "abc123",
-  name: "Sprint Retrospektifi",
-  isAnonymous: true,
-  columns: [...],
-  notes: [...],
-  participants: [...]
-}
-
-// Katılımcı bilgisi
-localStorage["retro_participant_{channelId}"] = {
-  id: "user123",
-  name: "Kozmik Panda 42",
-  color: "#FF6B6B"
-}
-```
-
----
-
-### 📁 Proje Yapısı
-
-```
-RetroRtc/
-├── app/
-│   ├── app.vue                 # Ana uygulama bileşeni
-│   ├── components/
-│   │   ├── ConnectionStatus.vue    # WebRTC bağlantı durumu
-│   │   ├── ExportModal.vue         # Markdown export modal
-│   │   ├── ParticipantJoin.vue     # Katılım formu
-│   │   ├── PostItNote.vue          # Post-it not bileşeni
-│   │   ├── RetroBoard.vue          # Ana retro tahtası
-│   │   └── RetroColumn.vue         # Kolon bileşeni
-│   ├── composables/
-│   │   ├── useRetroChannel.ts      # Kanal yönetimi
-│   │   └── useWebRTC.ts            # WebRTC işlemleri
-│   ├── pages/
-│   │   ├── index.vue               # Ana sayfa (oluşturma formu)
-│   │   └── retro/
-│   │       └── [channelId].vue     # Retro odası
-│   └── utils/
-│       ├── colors.ts               # Renk paletleri
-│       └── nicknames.ts            # Takma isim üreteci
-├── nuxt.config.ts
-├── tailwind.config.js
-└── package.json
-```
-
----
-
 ## 🤝 Contributing / Katkıda Bulunma
-
-Contributions are welcome! / Katkılarınızı bekliyoruz!
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -496,7 +296,6 @@ Contributions are welcome! / Katkılarınızı bekliyoruz!
 ## 📄 License / Lisans
 
 This project is licensed under the MIT License.
-
 Bu proje MIT lisansı altında lisanslanmıştır.
 
 ---

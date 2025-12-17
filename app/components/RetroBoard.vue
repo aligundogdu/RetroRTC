@@ -1,5 +1,6 @@
 <template>
-  <div class="grid gap-6" :style="gridStyle">
+  <!-- Kanban style horizontal scroll - fills remaining viewport height -->
+  <div class="flex gap-6 overflow-x-auto pb-4 flex-1 h-full">
     <RetroColumn
       v-for="column in channel.columns"
       :key="column.id"
@@ -7,6 +8,7 @@
       :notes="getNotesByColumn(column.id)"
       :current-participant="currentParticipant"
       :is-presentation-mode="isPresentationMode"
+      class="flex-shrink-0 w-80"
       @add-note="(content) => $emit('add-note', column.id, content)"
       @update-note="(noteId, content) => $emit('update-note', noteId, content)"
       @delete-note="(noteId) => $emit('delete-note', noteId)"
@@ -33,14 +35,8 @@ const emit = defineEmits<{
   'unlike-note': [noteId: string]
 }>()
 
-const gridStyle = computed(() => {
-  const columnCount = props.channel.columns.length
-  return {
-    gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`
-  }
-})
-
 function getNotesByColumn(columnId: string): PostItNote[] {
   return props.channel.notes.filter(note => note.columnId === columnId)
 }
 </script>
+

@@ -117,6 +117,11 @@ export function useTrysteroSync(): SyncProvider {
     // Mesaj işleyici
     function handleMessage(data: any, peerId: string) {
         const message = data as SyncMessage
+
+        if (messageHandlers.size === 0) {
+            console.warn('[TRYSTERO] WARNING: Received message but no handlers are registered!', message.type)
+        }
+
         messageHandlers.forEach(handler => {
             handler(message, peerId)
         })

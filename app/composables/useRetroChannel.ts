@@ -44,7 +44,14 @@ export interface RetroChannel {
 const STORAGE_PREFIX = 'retro_channel_'
 const PARTICIPANT_KEY = 'retro_participant_'
 
-export function useRetroChannel(channelId: string, providerType: ProviderType = 'peerjs') {
+export interface RetroChannelOptions {
+    supabaseCredentials?: {
+        url: string
+        key: string
+    }
+}
+
+export function useRetroChannel(channelId: string, providerType: ProviderType = 'peerjs', options: RetroChannelOptions = {}) {
     const channel = ref<RetroChannel | null>(null)
     const currentParticipant = ref<Participant | null>(null)
     const activeProvider = ref<ProviderType>(providerType)
@@ -52,14 +59,23 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
     const storageKey = `${STORAGE_PREFIX}${channelId}`
     const participantKey = `${PARTICIPANT_KEY}${channelId}`
 
-    // Her iki provider'ı da oluştur - sadece aktif olan kullanılacak
+    // Her üç provider'ı da oluştur - sadece aktif olan kullanılacak
     const webrtc = useWebRTC()
     const trystero = useTrysteroSync()
+    const supabase = useSupabaseSync()
+
+    // Eğer Supabase credentials varsa set et
+    if (options.supabaseCredentials && supabase.setCredentials) {
+        supabase.setCredentials(options.supabaseCredentials.url, options.supabaseCredentials.key)
+    }
 
     // Aktif provider'ın status ve role bilgileri
     const syncStatus = computed(() => {
         if (activeProvider.value === 'trystero' && trystero) {
             return trystero.status.value
+        }
+        if (activeProvider.value === 'supabase' && supabase) {
+            return supabase.status.value
         }
         return webrtc?.status.value || 'disconnected'
     })
@@ -68,6 +84,9 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
         if (activeProvider.value === 'trystero' && trystero) {
             return trystero.role.value
         }
+        if (activeProvider.value === 'supabase' && supabase) {
+            return supabase.role.value
+        }
         return webrtc?.role.value || null
     })
 
@@ -75,27 +94,36 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
         if (activeProvider.value === 'trystero' && trystero) {
             return trystero.connectedPeersCount.value
         }
+        if (activeProvider.value === 'supabase' && supabase) {
+            return supabase.connectedPeersCount.value
+        }
         return webrtc?.connectedPeersCount.value || 0
     })
 
     // Provider-agnostic helper functions
-    function getActiveRole() {
-        return activeProvider.value === 'trystero' ? trystero.role.value : getActiveRole()
+    function getActiveRole(): SyncRole {
+        if (activeProvider.value === 'trystero') return trystero.role.value
+        if (activeProvider.value === 'supabase') return supabase.role.value
+        return webrtc?.role.value || null
     }
 
     function doBroadcast(message: Omit<WebRTCMessage, 'timestamp'>) {
         if (activeProvider.value === 'trystero') {
             trystero.broadcast(message as any)
-        } else {
-            doBroadcast(message)
+        } else if (activeProvider.value === 'supabase') {
+            supabase.broadcast(message as any)
+        } else if (webrtc) {
+            webrtc.broadcast(message)
         }
     }
 
     function doSendToHost(message: Omit<WebRTCMessage, 'timestamp'>) {
         if (activeProvider.value === 'trystero') {
             trystero.sendToHost(message as any)
-        } else {
-            doSendToHost(message)
+        } else if (activeProvider.value === 'supabase') {
+            supabase.sendToHost(message as any)
+        } else if (webrtc) {
+            webrtc.sendToHost(message)
         }
     }
 
@@ -122,7 +150,8 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
                 isCreator: true
             }],
             createdAt: Date.now(),
-            creatorId: participantId
+            creatorId: participantId,
+            syncProvider: activeProvider.value
         }
 
         saveChannel(newChannel)
@@ -145,6 +174,13 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
                     handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
                 })
                 console.log('[DEBUG] Trystero host initialized successfully')
+            } else if (activeProvider.value === 'supabase') {
+                await supabase.initializeAsHost(channelId)
+                supabase.onMessage((message, peerId) => {
+                    console.log('[DEBUG] Supabase Host received message:', message.type)
+                    handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
+                })
+                console.log('[DEBUG] Supabase host initialized successfully')
             } else {
                 await webrtc.initializeAsHost(channelId)
                 console.log('[DEBUG] WebRTC host initialized successfully')
@@ -162,21 +198,46 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
 
         try {
             if (activeProvider.value === 'trystero') {
-                await trystero.connectAsGuest(channelId)
-
-                // Trystero mesaj handler'ini room oluştuktan sonra kaydet
-                trystero.onMessage((message, peerId) => {
+                // Trystero mesaj handler'ini connector çağırmadan önce kaydet
+                // Bu sayede bağlantı kurulur kurulmaz gelen mesajları kaçırmayız
+                const cleanupListener = trystero.onMessage((message, peerId) => {
                     console.log('[DEBUG] Trystero Guest received message:', message.type)
                     handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
                 })
 
-                console.log('[DEBUG] joinChannel: Connected via Trystero, requesting sync...')
+                try {
+                    await trystero.connectAsGuest(channelId)
+                    console.log('[DEBUG] joinChannel: Connected via Trystero, requesting sync...')
 
-                // Kanal verisini iste
-                trystero.sendToHost({
-                    type: 'REQUEST_SYNC',
-                    payload: null
+                    // Kanal verisini iste
+                    trystero.sendToHost({
+                        type: 'REQUEST_SYNC',
+                        payload: null
+                    })
+                } catch (e) {
+                    // Bağlantı hatası durumunda listener'ı temizle (memory leak önlemi)
+                    cleanupListener()
+                    throw e
+                }
+            } else if (activeProvider.value === 'supabase') {
+                // Supabase handler kayıt
+                const cleanupListener = supabase.onMessage((message, peerId) => {
+                    console.log('[DEBUG] Supabase Guest received message:', message.type)
+                    handleWebRTCMessage(message as WebRTCMessage, { peer: peerId })
                 })
+
+                try {
+                    await supabase.connectAsGuest(channelId)
+                    console.log('[DEBUG] joinChannel: Connected via Supabase, requesting sync...')
+
+                    supabase.sendToHost({
+                        type: 'REQUEST_SYNC',
+                        payload: null
+                    })
+                } catch (e) {
+                    cleanupListener()
+                    throw e
+                }
             } else {
                 await webrtc.connectAsGuest(channelId)
                 console.log('[DEBUG] joinChannel: Connected as guest, now requesting sync...')
@@ -458,9 +519,12 @@ export function useRetroChannel(channelId: string, providerType: ProviderType = 
                     })
 
                     // Provider-agnostic: doBroadcast kullan (hem PeerJS hem Trystero için çalışır)
+                    // Vue Proxy nesnelerini temizlemek için JSON cycle'ı yapıyoruz
+                    const cleanPayload = JSON.parse(JSON.stringify(channel.value))
+
                     doBroadcast({
                         type: 'SYNC_STATE',
-                        payload: channel.value
+                        payload: cleanPayload
                     })
                     console.log('[DEBUG] REQUEST_SYNC: SYNC_STATE sent successfully')
                 } else if (getActiveRole() === 'host' && !channel.value) {

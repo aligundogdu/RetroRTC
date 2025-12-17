@@ -111,7 +111,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-3">
               Bağlantı Yöntemi
             </label>
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <button
                 v-for="provider in providers"
                 :key="provider.id"
@@ -128,6 +128,41 @@
                 <div class="font-semibold text-gray-800 text-sm">{{ provider.name }}</div>
                 <div class="text-xs text-gray-500 mt-1">{{ provider.description }}</div>
               </button>
+            </div>
+          </div>
+
+          <!-- Supabase Custom Credentials -->
+          <div v-if="syncProvider === 'supabase'" class="bg-gray-50 p-4 rounded-xl border border-gray-200 animate-fade-in">
+            <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <span>⚡ Supabase Ayarları</span>
+              <span class="text-xs font-normal text-gray-500">(Kendi projenizi kullanın)</span>
+            </h3>
+            
+            <div class="grid grid-cols-1 gap-4">
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Project URL</label>
+                <input
+                  v-model="supabaseUrl"
+                  type="text"
+                  placeholder="https://your-project.supabase.co"
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                />
+              </div>
+              
+              <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Anon Key</label>
+                <input
+                  v-model="supabaseKey"
+                  type="password"
+                  placeholder="public-anon-key..."
+                  class="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                />
+              </div>
+            </div>
+
+            <div class="mt-3 text-xs text-amber-600 flex gap-2">
+              <span>⚠️</span>
+              <p>Bu bilgiler kanal URL'si içinde şifreli olarak paylaşılacaktır. Sadece 'Anon Public' key kullanın.</p>
             </div>
           </div>
 
@@ -164,8 +199,19 @@ const syncProvider = ref<ProviderType>('trystero') // Varsayılan: Trystero
 const providers = computed(() => [
   { id: 'peerjs' as ProviderType, ...PROVIDER_INFO.peerjs },
   { id: 'trystero' as ProviderType, ...PROVIDER_INFO.trystero },
-  { id: 'gun' as ProviderType, ...PROVIDER_INFO.gun }
+  { id: 'gun' as ProviderType, ...PROVIDER_INFO.gun },
+  { id: 'supabase' as ProviderType, ...PROVIDER_INFO.supabase }
 ])
+
+const supabaseUrl = ref('')
+const supabaseKey = ref('')
+
+// Pre-fill from config if available (only on client to avoid hydration mismatch if env differs)
+onMounted(() => {
+  const config = useRuntimeConfig()
+  if (config.public.supabaseUrl) supabaseUrl.value = config.public.supabaseUrl as string
+  if (config.public.supabaseKey) supabaseKey.value = config.public.supabaseKey as string
+})
 
 function addColumn() {
   columns.value.push('')
@@ -190,8 +236,20 @@ function createRetro() {
     localStorage.setItem(`retro_setup_${channelId}`, JSON.stringify(channelData))
   }
   
+  const query: any = { p: syncProvider.value }
+
+  // Supabase özel credentials varsa ekle
+  if (syncProvider.value === 'supabase' && supabaseUrl.value && supabaseKey.value) {
+    // Base64 encode basic obfuscation
+    const creds = JSON.stringify({ u: supabaseUrl.value, k: supabaseKey.value })
+    query.c = btoa(creds)
+  }
+
   // Retrospektif sayfasına yönlendir
-  router.push(`/retro/${channelId}`)
+  router.push({
+    path: `/retro/${channelId}`,
+    query
+  })
 }
 
 function generateChannelId(): string {

@@ -17,7 +17,7 @@
     />
 
     <!-- Main Content -->
-    <div v-else-if="channel || webrtcStatus === 'connecting' || webrtcStatus === 'connected'" class="w-full p-8">
+    <div v-else-if="channel || webrtcStatus === 'connecting' || webrtcStatus === 'connected'" class="w-full p-8 flex flex-col flex-1 overflow-hidden">
       <!-- Header -->
       <div class="mb-8">
         <div class="flex items-center justify-between mb-4">
@@ -127,7 +127,13 @@ const channelId = route.params.channelId as string
 function getProviderFromSetup(): ProviderType {
   if (!import.meta.client) return 'trystero'
   
-  // Önce setup verisine bak
+  // 1. URL Query Param'a bak (Guest linkinden gelenler için)
+  const queryProvider = route.query.p as ProviderType
+  if (queryProvider && ['peerjs', 'trystero', 'gun', 'supabase'].includes(queryProvider)) {
+    return queryProvider
+  }
+
+  // 2. Setup verisine bak
   const setupData = localStorage.getItem(`retro_setup_${channelId}`)
   if (setupData) {
     try {
@@ -155,6 +161,27 @@ function getProviderFromSetup(): ProviderType {
 const selectedProvider = getProviderFromSetup()
 console.log('[DEBUG] Using sync provider:', selectedProvider)
 
+// Supabase credential kontrolü (URL'den)
+let supabaseOptions = {}
+if (selectedProvider === 'supabase' && import.meta.client) {
+  const credsStr = route.query.c as string
+  if (credsStr) {
+    try {
+      const decoded = atob(credsStr)
+      const creds = JSON.parse(decoded)
+      console.log('[DEBUG] Found custom Supabase credentials in URL')
+      supabaseOptions = {
+        supabaseCredentials: {
+          url: creds.u,
+          key: creds.k
+        }
+      }
+    } catch (e) {
+      console.error('Failed to decode Supabase credentials:', e)
+    }
+  }
+}
+
 const {
   channel,
   currentParticipant,
@@ -172,7 +199,7 @@ const {
   unlikeNote,
   loadChannel,
   loadParticipant
-} = useRetroChannel(channelId, selectedProvider)
+} = useRetroChannel(channelId, selectedProvider, supabaseOptions)
 
 const showJoinModal = ref(false)
 const linkCopied = ref(false)

@@ -10,6 +10,7 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.88.0",
     "gun": "^0.2020.1241",
     "nuxt": "^4.2.1",
     "peerjs": "^1.5.5",
